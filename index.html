@@ -200,15 +200,16 @@
     font-weight: 600;
   }
   .custom-split {
-    display: none;
+    max-height: 0; overflow: hidden; opacity: 0;
     align-items: center;
     gap: 1rem;
-    padding: 0.75rem 1rem;
+    padding: 0 1rem;
     background: var(--surface);
-    border: 1px solid var(--border);
+    border: 1px solid transparent;
     border-radius: 8px;
+    transition: all 0.2s;
   }
-  .custom-split.visible { display: flex; }
+  .custom-split.visible { max-height: 4rem; opacity: 1; padding: 0.75rem 1rem; border-color: var(--border); }
   .custom-split input[type=range] { flex: 1; }
   .custom-split .split-val {
     min-width: 10ch;
@@ -528,7 +529,7 @@ function render() {
     : activePattern === 'split50'
     ? 'Blended rate: <span>' + fmtCents(d.evBlendedRate) + '</span> for EV Add-On &middot; <span>' + fmtCents(d.mdBlendedRate) + '</span> for Midday Saver'
     : activePattern === 'custom'
-    ? 'Blended rate: <span>' + fmtCents(d.evBlendedRate) + '</span> &mdash; ' + (d.split.sopMins ? Math.round(d.split.sop/d.split.totalMins*100) + '% Super Off-Peak, ' : '') + (d.split.ovnMins ? Math.round(d.split.ovn/d.split.totalMins*100) + '% Overnight, ' : '') + (d.split.opMins ? Math.round(d.split.op/d.split.totalMins*100) + '% Off-Peak, ' : '') + (d.split.peakMins ? Math.round(d.split.peak/d.split.totalMins*100) + '% Peak' : '')
+    ? 'Blended rate: <span>' + fmtCents(d.evBlendedRate) + '</span> for EV Add-On &middot; <span>' + fmtCents(d.mdBlendedRate) + '</span> for Midday Saver'
     : 'Blended rate: <span>' + fmtCents(d.evBlendedRate) + '</span> for EV Add-On &middot; <span>' + fmtCents(d.mdBlendedRate) + '</span> for Midday Saver';
 
   // ---- Summary Cards ----
