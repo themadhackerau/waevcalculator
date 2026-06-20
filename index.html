@@ -456,7 +456,7 @@ function getChargingSplit() {
       }
       const t = totalMins || 1;
       const label = `${customStartHour}:${String(customStartMin).padStart(2,'0')}–${customEndHour}:${String(customEndMin).padStart(2,'0')} (${totalMins < 60 ? totalMins + 'min' : Math.round(totalMins/60) + 'h'})`;
-      return { sop: sop/t, ovn: ovn/t, op: op/t, label, totalMins, sopMins: sop, ovnMins: ovn, opMins: op, peakMins: peak };
+      return { sop: sop/t, ovn: ovn/t, op: op/t, peak: peak/t, label, totalMins, sopMins: sop, ovnMins: ovn, opMins: op, peakMins: peak };
     }
     default: return { sop: 1, ovn: 0, op: 0, label: '100% Super Off-Peak' };
   }
@@ -476,12 +476,12 @@ function compute() {
   const a1EnergyCost = kwhPerYear * RATES.a1.flat;
   const a1Total = a1SupplyCost + a1EnergyCost;
 
-  // Midday Saver — blended rate from split: sop rate + offpeak for remainder
-  const mdBlendedRate = split.sop * 0.086151 + (1 - split.sop) * 0.236916;
+  // Midday Saver — blended rate: sop=sop, everything else at off-peak, peak at peak
+  const mdBlendedRate = split.sop * 0.086151 + ((split.ovn || 0) + (split.op || 0)) * 0.236916 + (split.peak || 0) * 0.538446;
   const mdCost = RATES.midday.supply * supplyDays + kwhPerYear * mdBlendedRate;
 
-  // EV Add-On — blended rate: sop, ovn, offpeak
-  const evBlendedRate = split.sop * 0.086151 + split.ovn * 0.193841 + split.op * 0.236916;
+  // EV Add-On — blended rate: all four periods
+  const evBlendedRate = split.sop * 0.086151 + (split.ovn || 0) * 0.193841 + (split.op || 0) * 0.236916 + (split.peak || 0) * 0.538446;
   const evCost = RATES.ev.supply * supplyDays + kwhPerYear * evBlendedRate;
 
   // Static scenario costs (for the full chart — all windows, not blended)
