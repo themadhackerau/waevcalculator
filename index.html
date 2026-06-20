@@ -91,9 +91,10 @@
     background: var(--accent); cursor: pointer; border: 2px solid var(--bg);
   }
   .slider-ticks {
-    display: flex; justify-content: space-between;
+    position: relative; height: 1.2em;
     font-size: 0.72rem; color: var(--muted); margin-top: 0.25rem;
   }
+  .slider-ticks span { position: absolute; transform: translateX(-50%); white-space: nowrap; }
   .ev-select select {
     width: 100%; padding: 0.55rem 0.75rem;
     background: var(--surface); color: var(--text);
@@ -512,19 +513,25 @@ function updateDistanceSlider() {
   const pi = getPeriodInfo();
   const d = pi.distDivisor;
   const displayVal = Math.round(annualKm / d);
+  let tickVals = [];
   if (d === 365) {
-    slider.min = 5; slider.max = 150; slider.step = 5; slider.value = displayVal;
-    ticks.innerHTML = '<span>5</span><span>20</span><span>50</span><span>100</span><span>150</span>';
+    slider.min = 10; slider.max = 150; slider.step = 10; slider.value = displayVal;
+    tickVals = [{v:10,l:'10'},{v:50,l:'50'},{v:100,l:'100'},{v:150,l:'150'}];
   } else if (d === 52) {
-    slider.min = 35; slider.max = 1000; slider.step = 10; slider.value = displayVal;
-    ticks.innerHTML = '<span>50</span><span>200</span><span>400</span><span>750</span><span>1,000</span>';
+    slider.min = 50; slider.max = 1000; slider.step = 50; slider.value = displayVal;
+    tickVals = [{v:50,l:'50'},{v:200,l:'200'},{v:500,l:'500'},{v:750,l:'750'},{v:1000,l:'1,000'}];
   } else if (d === 12) {
-    slider.min = 150; slider.max = 4000; slider.step = 50; slider.value = displayVal;
-    ticks.innerHTML = '<span>200</span><span>800</span><span>1,500</span><span>2,500</span><span>4,000</span>';
+    slider.min = 200; slider.max = 4000; slider.step = 100; slider.value = displayVal;
+    tickVals = [{v:200,l:'200'},{v:800,l:'800'},{v:1500,l:'1,500'},{v:2500,l:'2,500'},{v:4000,l:'4,000'}];
   } else {
-    slider.min = 2000; slider.max = 40000; slider.step = 500; slider.value = displayVal;
-    ticks.innerHTML = '<span>2k</span><span>10k</span><span>20k</span><span>30k</span><span>40k</span>';
+    slider.min = 2000; slider.max = 40000; slider.step = 2000; slider.value = displayVal;
+    tickVals = [{v:2000,l:'2k'},{v:10000,l:'10k'},{v:20000,l:'20k'},{v:30000,l:'30k'},{v:40000,l:'40k'}];
   }
+  const range = slider.max - slider.min;
+  ticks.innerHTML = tickVals.map(t => {
+    const pct = ((t.v - slider.min) / range) * 100;
+    return '<span style="left:' + pct.toFixed(1) + '%">' + t.l + '</span>';
+  }).join('');
 }
 
 function fmtCents(c) {
