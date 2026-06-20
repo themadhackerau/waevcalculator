@@ -224,6 +224,29 @@
     font-style: italic;
   }
   .blended-rate span { color: var(--accent); font-weight: 600; font-style: normal; }
+
+  /* Period selector */
+  .period-selector {
+    display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.5rem;
+  }
+  .period-selector span.label { font-size: 0.85rem; font-weight: 600; color: var(--muted); }
+  .period-btn {
+    padding: 0.4rem 0.9rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--surface);
+    color: var(--text);
+    font-size: 0.8rem;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .period-btn:hover { border-color: var(--accent); }
+  .period-btn.active {
+    background: var(--accent);
+    color: #000;
+    border-color: var(--accent);
+    font-weight: 600;
+  }
 </style>
 </head>
 <body>
@@ -239,7 +262,15 @@
 <div class="plan-details" id="planDetails"></div>
 
 <hr>
-<h2 style="font-size:1.2rem;font-weight:700;margin-bottom:1.25rem;">Calculator</h2>
+<h2 style="font-size:1.2rem;font-weight:700;margin-bottom:1rem;">Calculator</h2>
+
+<div class="period-selector">
+  <span class="label">Show costs</span>
+  <button class="period-btn" data-period="day">Daily</button>
+  <button class="period-btn" data-period="week">Weekly</button>
+  <button class="period-btn" data-period="month">Monthly</button>
+  <button class="period-btn active" data-period="year">Yearly</button>
+</div>
 
 <!-- Sliders -->
 <div class="sliders">
@@ -249,7 +280,7 @@
     <div class="slider-ticks"><span>10</span><span>15</span><span>20</span><span>25</span><span>30</span></div>
   </div>
   <div class="slider-group">
-    <label>Annual Distance <span class="val" id="distanceVal">15,000 km</span></label>
+    <label><span id="distanceLabel">Annual Distance</span> <span class="val" id="distanceVal">15,000 km</span></label>
     <input type="range" id="distance" min="2000" max="40000" step="500" value="15000">
     <div class="slider-ticks"><span>2k</span><span>10k</span><span>20k</span><span>30k</span><span>40k</span></div>
   </div>
@@ -331,8 +362,27 @@ const RATES = {
 
 // ---- State ----
 let chart = null;
-let activePattern = 'sop100'; // 'sop100' | 'ovn100' | 'split50' | 'custom'
-let customSplit = 50; // 0-100 (% Super Off-Peak, rest Overnight)
+let activePattern = 'sop100';
+let customSplit = 50;
+let activePeriod = 'year'; // 'day' | 'week' | 'month' | 'year'
+
+function getPeriodInfo() {
+  switch (activePeriod) {
+    case 'day':   return { divisor: 365, label: 'day', abbr: '/day', distLabel: 'Daily Distance', distDivisor: 365 };
+    case 'week':  return { divisor: 52, label: 'week', abbr: '/wk', distLabel: 'Weekly Distance', distDivisor: 52 };
+    case 'month': return { divisor: 12, label: 'month', abbr: '/mo', distLabel: 'Monthly Distance', distDivisor: 12 };
+    default:      return { divisor: 1, label: 'year', abbr: '/yr', distLabel: 'Annual Distance', distDivisor: 1 };
+  }
+}
+
+function fmtPeriodDollars(annualAmount) {
+  const pi = getPeriodInfo();
+  return fmtDollars(annualAmount / pi.divisor);
+}
+function fmtPeriodDollarsPrecise(annualAmount) {
+  const pi = getPeriodInfo();
+  return fmtDollarsPrecise(annualAmount / pi.divisor);
+}
 
 function fmtCents(c) {
   return (c * 100).toFixed(1) + 'c/kWh';
@@ -414,7 +464,9 @@ function render() {
 
   // Update labels
   document.getElementById('consumptionVal').textContent = d.whPerKm + ' kWh/100km';
-  document.getElementById('distanceVal').textContent = d.kmPerYear.toLocaleString() + ' km';
+  const pi = getPeriodInfo();
+  document.getElementById('distanceVal').textContent = (d.kmPerYear / pi.distDivisor).toLocaleString('en-AU', {maximumFractionDigits: 0}) + ' km';
+  document.getElementById('distanceLabel').textContent = pi.distLabel;
   document.getElementById('blendedRate').innerHTML = d.split.sop === 0 && d.split.ovn === 1
     ? 'Blended rate: <span>' + fmtCents(d.evBlendedRate) + '</span> (Overnight) &mdash; Midday Saver charges <span>' + fmtCents(d.mdBlendedRate) + '</span> (Off-Peak) instead'
     : d.split.ovn === 0 && d.split.sop === 1
@@ -424,15 +476,17 @@ function render() {
   // ---- Summary Cards ----
   const bestPlan = d.plansBlended.reduce((a, b) => a.cost < b.cost ? a : b);
   const a1Cost = d.plansBlended.find(p => p.plan === 'a1').cost;
+  const pi2 = getPeriodInfo();
   const cards = d.plansBlended.map(p => {
     const saving = a1Cost - p.cost;
+    const periodCost = p.cost / pi2.divisor;
     return `
       <div class="card${p.plan === bestPlan.plan ? ' best' : ''}">
         <div class="plan-name">${p.name}</div>
-        <div class="annual-cost">${fmtDollars(p.cost)}<span style="font-size:0.7em;font-weight:500;color:var(--muted)">/yr</span></div>
-        <div class="annual-cost per-km">${(p.cost / d.kmPerYear * 100).toFixed(1)}c/km · ${fmtDollarsPrecise(p.cost / 12)}/mo</div>
+        <div class="annual-cost">${fmtPeriodDollars(p.cost)}<span style="font-size:0.7em;font-weight:500;color:var(--muted)">${pi2.abbr}</span></div>
+        <div class="annual-cost per-km">${(p.cost / d.kmPerYear * 100).toFixed(1)}c/km · ${activePeriod !== 'year' ? fmtPeriodDollarsPrecise(p.cost) + pi2.abbr : ''}</div>
         <div class="saving${saving >= 0 ? ' positive' : ' negative'}">
-          ${saving >= 0 ? '↓ ' + fmtDollars(saving) + '/yr vs A1' : '↑ ' + fmtDollars(Math.abs(saving)) + '/yr vs A1'}
+          ${saving >= 0 ? '↓ ' + fmtPeriodDollars(saving) + pi2.abbr + ' vs A1' : '↑ ' + fmtPeriodDollars(Math.abs(saving)) + pi2.abbr + ' vs A1'}
         </div>
       </div>`;
   }).join('');
@@ -448,10 +502,12 @@ function render() {
     sc.ev_overnight,
     sc.ev_offpeak,
   ];
+  const pi3 = getPeriodInfo();
   const scenarioLabels = scenarioList.map(s => s.label.replace(' · ', '\n'));
-  const scenarioCosts = scenarioList.map(s => Math.round(s.cost));
+  const scenarioCosts = scenarioList.map(s => Math.round(s.cost / pi3.divisor));
   const colors = ['#8b949e', '#d2991d', '#d2991d88', '#3fb950', '#3fb950aa', '#3fb95088'];
   const borders = ['#8b949e', '#d2991d', '#d2991d44', '#3fb950', '#3fb95066', '#3fb95044'];
+  const periodLabel = activePeriod.charAt(0).toUpperCase() + activePeriod.slice(1) + 'ly';
 
   if (chart) chart.destroy();
   const ctx = document.getElementById('costChart').getContext('2d');
@@ -460,7 +516,7 @@ function render() {
     data: {
       labels: scenarioLabels,
       datasets: [{
-        label: 'Annual cost (AUD)',
+        label: periodLabel + ' cost (AUD)',
         data: scenarioCosts,
         backgroundColor: colors,
         borderColor: borders,
@@ -475,7 +531,7 @@ function render() {
         legend: { display: false },
         tooltip: {
           callbacks: {
-            label: ctx => ' ' + fmtDollars(ctx.raw) + '/yr  (' + (ctx.raw / d.kmPerYear * 100).toFixed(1) + 'c/km)'
+            label: ctx => ' ' + fmtDollars(ctx.raw) + pi3.abbr + '  (' + (ctx.raw * pi3.divisor / d.kmPerYear * 100).toFixed(1) + 'c/km)'
           }
         }
       },
@@ -540,41 +596,42 @@ function render() {
       <h3>Your EV Profile</h3>
       <p>Annual charging: <strong>${d.kwhPerYear.toLocaleString()} kWh</strong> (${d.whPerKm} kWh/100km × ${d.kmPerYear.toLocaleString()} km)</p>
       <p>Charging pattern: <strong>${d.split.label}</strong> → blended EV Add-On rate <strong>${fmtCents(d.evBlendedRate)}</strong></p>
+      <p>Period: <strong>${pi.label}</strong> · ${d.kwhPerYear.toLocaleString()} kWh/year ÷ ${pi.divisor} = <strong>${Math.round(d.kwhPerYear / pi.divisor).toLocaleString()} kWh</strong>${pi.abbr}</p>
 
       <h3>Your Costs by Plan (${d.split.label})</h3>
       <table class="analysis-table">
-        <tr><th>Plan</th><th>Blended Rate</th><th>Supply/yr</th><th>Energy/yr</th><th>Total/yr</th><th>vs A1</th></tr>
+        <tr><th>Plan</th><th>Blended Rate</th><th>Supply${pi.abbr}</th><th>Energy${pi.abbr}</th><th>Total${pi.abbr}</th><th>vs A1</th></tr>
         ${d.plansBlended.map(p => `
           <tr>
             <td><strong>${p.name}</strong></td>
             <td>${fmtCents(p.rate)}</td>
-            <td>${fmtDollars(p.supply)}</td>
-            <td>${fmtDollars(d.kwhPerYear * p.rate)}</td>
-            <td><strong>${fmtDollars(p.cost)}</strong></td>
-            <td class="${p.plan === 'a1' ? '' : (a1Cost > p.cost ? 'highlight' : 'warn')}">${p.plan === 'a1' ? '—' : (a1Cost > p.cost ? '↓ ' + fmtDollars(a1Cost - p.cost) : '↑ ' + fmtDollars(p.cost - a1Cost))}</td>
+            <td>${fmtPeriodDollars(p.supply)}</td>
+            <td>${fmtPeriodDollars(d.kwhPerYear * p.rate)}</td>
+            <td><strong>${fmtPeriodDollars(p.cost)}</strong></td>
+            <td class="${p.plan === 'a1' ? '' : (a1Cost > p.cost ? 'highlight' : 'warn')}">${p.plan === 'a1' ? '—' : (a1Cost > p.cost ? '↓ ' + fmtPeriodDollars(a1Cost - p.cost) : '↑ ' + fmtPeriodDollars(p.cost - a1Cost))}</td>
           </tr>`).join('')}
       </table>
 
       <h3>Full Window Comparison</h3>
       <table class="analysis-table">
-        <tr><th>Charging Window</th><th>A1 Cost/yr</th><th>EV Add-On Cost/yr</th><th>Saving/yr</th></tr>
+        <tr><th>Charging Window</th><th>A1 Cost${pi.abbr}</th><th>EV Add-On Cost${pi.abbr}</th><th>Saving${pi.abbr}</th></tr>
         <tr>
           <td>Super Off-Peak (9am–3pm)</td>
-          <td>${fmtDollars(a1Cost)}</td>
-          <td>${fmtDollars(d.scenarios.ev_superoffpeak.cost)}</td>
-          <td class="highlight">↓ ${fmtDollars(a1Cost - d.scenarios.ev_superoffpeak.cost)}</td>
+          <td>${fmtPeriodDollars(a1Cost)}</td>
+          <td>${fmtPeriodDollars(d.scenarios.ev_superoffpeak.cost)}</td>
+          <td class="highlight">↓ ${fmtPeriodDollars(a1Cost - d.scenarios.ev_superoffpeak.cost)}</td>
         </tr>
         <tr>
           <td>Overnight (11pm–6am)</td>
-          <td>${fmtDollars(a1Cost)}</td>
-          <td>${fmtDollars(d.scenarios.ev_overnight.cost)}</td>
-          <td class="highlight">↓ ${fmtDollars(a1Cost - d.scenarios.ev_overnight.cost)}</td>
+          <td>${fmtPeriodDollars(a1Cost)}</td>
+          <td>${fmtPeriodDollars(d.scenarios.ev_overnight.cost)}</td>
+          <td class="highlight">↓ ${fmtPeriodDollars(a1Cost - d.scenarios.ev_overnight.cost)}</td>
         </tr>
         <tr>
           <td>Off-Peak (6–9am / 9–11pm)</td>
-          <td>${fmtDollars(a1Cost)}</td>
-          <td>${fmtDollars(d.scenarios.ev_offpeak.cost)}</td>
-          <td class="highlight">↓ ${fmtDollars(a1Cost - d.scenarios.ev_offpeak.cost)}</td>
+          <td>${fmtPeriodDollars(a1Cost)}</td>
+          <td>${fmtPeriodDollars(d.scenarios.ev_offpeak.cost)}</td>
+          <td class="highlight">↓ ${fmtPeriodDollars(a1Cost - d.scenarios.ev_offpeak.cost)}</td>
         </tr>
       </table>
 
@@ -582,9 +639,9 @@ function render() {
       <p>The EV Add-On has a higher daily supply charge (<strong>129.23c/day</strong> vs A1's 116.05c/day — an extra <strong>${fmtDollarsPrecise(annualFromSupplyDiff)}/year</strong>), but this is recouped quickly by the lower charging rates.</p>
       <ul>
         <li>With your <strong>${d.split.label}</strong> pattern (blended rate <strong>${fmtCents(d.evBlendedRate)}</strong>), break-even is just <strong>${Math.round(breakevenKwh)} kWh/year</strong> — about <strong>${Math.round(breakevenKm).toLocaleString()} km</strong> at ${d.whPerKm} kWh/100km.</li>
-        <li>At ${d.kmPerYear.toLocaleString()} km/year, the EV Add-On <strong>${savingVsA1 > 0 ? 'saves ' + fmtDollars(savingVsA1) + '/year' : 'costs ' + fmtDollars(Math.abs(savingVsA1)) + '/year more'}</strong> versus A1 <em>on EV charging alone</em>.</li>
+        <li>At ${d.kmPerYear.toLocaleString()} km/year, the EV Add-On <strong>${savingVsA1 > 0 ? 'saves ' + fmtPeriodDollars(savingVsA1) + pi.abbr : 'costs ' + fmtPeriodDollars(Math.abs(savingVsA1)) + pi.abbr + ' more'}</strong> versus A1 <em>on EV charging alone</em>.</li>
       </ul>
-      ${d.split.sop < 1 ? `<p style="margin-top:0.75rem;"><strong>💡 Tip:</strong> Shifting even some charging to Super Off-Peak (9am–3pm) would save an additional <strong>${(d.evBlendedRate * 100 - 8.6151).toFixed(1)}c/kWh</strong> — worth <strong>${fmtDollars(d.kwhPerYear * (d.evBlendedRate - 0.086151))}/year</strong> at your mileage.</p>` : ''}
+      ${d.split.sop < 1 ? `<p style="margin-top:0.75rem;"><strong>💡 Tip:</strong> Shifting even some charging to Super Off-Peak (9am–3pm) would save an additional <strong>${(d.evBlendedRate * 100 - 8.6151).toFixed(1)}c/kWh</strong> — worth <strong>${fmtPeriodDollars(d.kwhPerYear * (d.evBlendedRate - 0.086151))}${pi.abbr}</strong> at your mileage.</p>` : ''}
 
       <div class="optimum-box">
         <h4>⚡ Optimum Charging Strategy</h4>
@@ -621,6 +678,15 @@ document.querySelectorAll('.pattern-btn').forEach(btn => {
     } else {
       customDiv.classList.remove('visible');
     }
+    render();
+  });
+});
+
+document.querySelectorAll('.period-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    activePeriod = this.dataset.period;
     render();
   });
 });
