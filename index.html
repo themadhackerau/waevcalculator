@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Synergy EV Plan Comparison — Perth, WA</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --border: #30363d;
+    --text: #e6edf3;
+    --muted: #8b949e;
+    --accent: #58a6ff;
+    --green: #3fb950;
+    --orange: #d2991d;
+    --red: #f85149;
+    --purple: #a371f7;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+  .container { max-width: 1100px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+  header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid var(--border);
+  }
+  header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem; letter-spacing: -0.02em; }
+  header h1 span { color: var(--accent); }
+  header p { color: var(--muted); font-size: 0.95rem; }
+  .last-updated { font-size: 0.8rem; color: var(--muted); margin-top: 0.25rem; }
+
+  /* Sliders */
+  .sliders {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    margin-bottom: 2.5rem;
+  }
+  @media (max-width: 640px) { .sliders { grid-template-columns: 1fr; } }
+  .slider-group label {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-weight: 600; font-size: 0.9rem; margin-bottom: 0.5rem;
+  }
+  .slider-group label .val {
+    font-size: 1.15rem; font-weight: 700; color: var(--accent);
+  }
+  .slider-group input[type=range] {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 8px; border-radius: 4px;
+    background: var(--border); outline: none;
+  }
+  .slider-group input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--accent); cursor: pointer; border: 2px solid var(--bg);
+  }
+  .slider-ticks {
+    display: flex; justify-content: space-between;
+    font-size: 0.72rem; color: var(--muted); margin-top: 0.25rem;
+  }
+
+  /* Summary cards */
+  .summary-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+  @media (max-width: 740px) { .summary-cards { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.25rem 1.5rem;
+  }
+  .card .plan-name { font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin-bottom: 0.25rem; }
+  .card .annual-cost { font-size: 1.8rem; font-weight: 800; margin-bottom: 0.25rem; }
+  .card .annual-cost.per-km { font-size: 0.85rem; color: var(--muted); font-weight: 500; }
+  .card.best { border-color: var(--green); position: relative; }
+  .card.best::after {
+    content: 'BEST'; position: absolute; top: -1px; right: 12px;
+    background: var(--green); color: #000; font-size: 0.65rem; font-weight: 800;
+    padding: 0.15rem 0.6rem; border-radius: 0 0 4px 4px; letter-spacing: 0.05em;
+  }
+  .card .saving { font-size: 0.85rem; margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid var(--border); }
+  .card .saving.positive { color: var(--green); }
+  .card .saving.negative { color: var(--red); }
+
+  /* Chart */
+  .chart-container {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin-bottom: 2.5rem;
+    position: relative;
+  }
+  .chart-container h2 { font-size: 1.05rem; margin-bottom: 1rem; font-weight: 600; }
+  .chart-wrap { position: relative; height: 380px; }
+  @media (max-width: 640px) { .chart-wrap { height: 280px; } }
+
+  /* Plan details */
+  .plan-details { margin-bottom: 2.5rem; }
+  .plan-details h2 { font-size: 1.2rem; font-weight: 700; margin-bottom: 1rem; }
+  .plan-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 1rem;
+  }
+  @media (max-width: 800px) { .plan-grid { grid-template-columns: 1fr; } }
+  .plan-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.25rem 1.5rem;
+  }
+  .plan-panel h3 { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.75rem; }
+  .rate-table { width: 100%; font-size: 0.82rem; border-collapse: collapse; }
+  .rate-table td { padding: 0.35rem 0; border-bottom: 1px solid var(--border); }
+  .rate-table td:last-child { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .plan-panel .link { display: inline-block; margin-top: 0.75rem; font-size: 0.82rem; color: var(--accent); text-decoration: none; }
+  .plan-panel .link:hover { text-decoration: underline; }
+  .plan-panel .note { font-size: 0.78rem; color: var(--muted); margin-top: 0.5rem; }
+
+  /* Analysis */
+  .analysis { margin-bottom: 2rem; }
+  .analysis h2 { font-size: 1.2rem; font-weight: 700; margin-bottom: 0.75rem; }
+  .analysis-block {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.5rem;
+    font-size: 0.9rem;
+  }
+  .analysis-block h3 { font-size: 0.95rem; font-weight: 700; margin: 1.25rem 0 0.5rem; }
+  .analysis-block h3:first-child { margin-top: 0; }
+  .analysis-block ul { padding-left: 1.25rem; margin: 0.5rem 0; }
+  .analysis-block li { margin-bottom: 0.35rem; }
+  .highlight { color: var(--green); font-weight: 600; }
+  .warn { color: var(--orange); font-weight: 600; }
+  .analysis-table { width: 100%; font-size: 0.82rem; border-collapse: collapse; margin: 0.75rem 0; }
+  .analysis-table th, .analysis-table td { padding: 0.5rem 0.75rem; border: 1px solid var(--border); text-align: right; }
+  .analysis-table th { background: var(--border); font-weight: 600; text-align: left; }
+  .analysis-table td:first-child { text-align: left; }
+
+  .optimum-box {
+    background: #1a3a2a;
+    border: 1px solid var(--green);
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    margin-top: 1rem;
+  }
+  .optimum-box h4 { color: var(--green); font-size: 0.9rem; margin-bottom: 0.5rem; }
+
+  footer {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.75rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--border);
+  }
+  hr { border: none; border-top: 1px solid var(--border); margin: 1.25rem 0; }
+
+  /* Charging pattern selector */
+  .charging-pattern {
+    margin-bottom: 2.5rem;
+  }
+  .charging-pattern label.main {
+    display: block; font-weight: 600; font-size: 0.9rem; margin-bottom: 0.75rem;
+  }
+  .pattern-buttons {
+    display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 1rem;
+  }
+  .pattern-btn {
+    padding: 0.55rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--text);
+    font-size: 0.82rem;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .pattern-btn:hover { border-color: var(--accent); }
+  .pattern-btn.active {
+    background: var(--accent);
+    color: #000;
+    border-color: var(--accent);
+    font-weight: 600;
+  }
+  .custom-split {
+    display: none;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+  .custom-split.visible { display: flex; }
+  .custom-split input[type=range] { flex: 1; }
+  .custom-split .split-val {
+    min-width: 10ch;
+    text-align: right;
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: var(--accent);
+  }
+  .blended-rate {
+    font-size: 0.78rem;
+    color: var(--muted);
+    margin-top: 0.5rem;
+    font-style: italic;
+  }
+  .blended-rate span { color: var(--accent); font-weight: 600; font-style: normal; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <h1>Synergy <span>EV Plan</span> Comparison</h1>
+  <p>Western Australia residential electricity plans — optimised for EV charging</p>
+  <p class="last-updated">Rates effective 1 July 2025 · Analysis updated June 2026</p>
+</header>
+
+<!-- Sliders -->
+<div class="sliders">
+  <div class="slider-group">
+    <label>EV Consumption <span class="val" id="consumptionVal">18 kWh/100km</span></label>
+    <input type="range" id="consumption" min="10" max="30" step="0.5" value="18">
+    <div class="slider-ticks"><span>10</span><span>15</span><span>20</span><span>25</span><span>30</span></div>
+  </div>
+  <div class="slider-group">
+    <label>Annual Distance <span class="val" id="distanceVal">15,000 km</span></label>
+    <input type="range" id="distance" min="2000" max="40000" step="500" value="15000">
+    <div class="slider-ticks"><span>2k</span><span>10k</span><span>20k</span><span>30k</span><span>40k</span></div>
+  </div>
+</div>
+
+<!-- Charging Pattern Selector -->
+<div class="charging-pattern">
+  <label class="main">When do you charge your EV?</label>
+  <div class="pattern-buttons" id="patternButtons">
+    <button class="pattern-btn active" data-pattern="sop100">☀️ All Super Off-Peak (9am–3pm)</button>
+    <button class="pattern-btn" data-pattern="ovn100">🌙 All Overnight (11pm–6am)</button>
+    <button class="pattern-btn" data-pattern="split50">⚡ 50/50 Day + Night</button>
+    <button class="pattern-btn" data-pattern="custom">🔧 Custom split</button>
+  </div>
+  <div class="custom-split" id="customSplit">
+    <span style="font-size:0.82rem;white-space:nowrap;">Super Off-Peak</span>
+    <input type="range" id="splitSlider" min="0" max="100" step="5" value="50">
+    <span style="font-size:0.82rem;white-space:nowrap;">Overnight</span>
+    <span class="split-val" id="splitVal">50% / 50%</span>
+  </div>
+  <div class="blended-rate" id="blendedRate"></div>
+</div>
+
+<!-- Summary Cards -->
+<div class="summary-cards" id="summaryCards"></div>
+
+<!-- Chart -->
+<div class="chart-container">
+  <h2>Annual EV Charging Cost by Plan &amp; Charging Window</h2>
+  <div class="chart-wrap"><canvas id="costChart"></canvas></div>
+</div>
+
+<!-- Plan Details -->
+<div class="plan-details" id="planDetails"></div>
+
+<!-- Analysis -->
+<div class="analysis" id="analysis"></div>
+
+<footer>
+  Rates sourced from Synergy &amp; WA Government. Not financial advice — verify with <a href="https://www.synergy.net.au/Your-home/Energy-plans" style="color:var(--accent)">synergy.net.au</a> before switching.
+</footer>
+
+</div>
+
+<script>
+// ---- RATES (GST incl, effective 1 July 2025) ----
+const RATES = {
+  a1: {
+    name: 'Home Plan (A1)',
+    supply: 1.1605,   // $/day
+    flat: 0.323719,   // $/kWh all hours
+    url: 'https://www.synergy.net.au/Your-home/Energy-plans',
+    desc: 'Flat rate all day, every day. Simple, no time-shifting needed.',
+    periods: [
+      { label: 'All hours', rate: 0.323719 }
+    ]
+  },
+  midday: {
+    name: 'Midday Saver',
+    supply: 1.2923,
+    url: 'https://www.synergy.net.au/Your-home/Energy-plans/Midday-Saver',
+    desc: 'Time-of-use with cheap midday window. Smart meter required.',
+    periods: [
+      { label: 'Super Off-Peak (9am–3pm)', rate: 0.086151 },
+      { label: 'Off-Peak (9pm–9am)', rate: 0.236916 },
+      { label: 'Peak (3pm–9pm)', rate: 0.538446 },
+    ]
+  },
+  ev: {
+    name: 'EV Add-On',
+    supply: 1.2923,
+    url: 'https://www.synergy.net.au/Your-home/Energy-plans/Electric-Vehicle-Add-On',
+    desc: 'Midday Saver + dedicated overnight EV window. EV registration required.',
+    periods: [
+      { label: 'Super Off-Peak (9am–3pm)', rate: 0.086151 },
+      { label: 'Off-Peak (6–9am, 9–11pm)', rate: 0.236916 },
+      { label: 'Overnight (11pm–6am)', rate: 0.193841 },
+      { label: 'Peak (3pm–9pm)', rate: 0.538446 },
+    ]
+  }
+};
+
+// ---- State ----
+let chart = null;
+let activePattern = 'sop100'; // 'sop100' | 'ovn100' | 'split50' | 'custom'
+let customSplit = 50; // 0-100 (% Super Off-Peak, rest Overnight)
+
+function fmtCents(c) {
+  return (c * 100).toFixed(1) + 'c/kWh';
+}
+function fmtDollars(n) {
+  return '$' + n.toLocaleString('en-AU', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+}
+function fmtDollarsPrecise(n) {
+  return '$' + n.toLocaleString('en-AU', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+// ---- Get current charging split as {sop, ovn, op} fractions ----
+function getChargingSplit() {
+  switch (activePattern) {
+    case 'sop100': return { sop: 1, ovn: 0, op: 0, label: '100% Super Off-Peak' };
+    case 'ovn100': return { sop: 0, ovn: 1, op: 0, label: '100% Overnight' };
+    case 'split50': return { sop: 0.5, ovn: 0.5, op: 0, label: '50/50 Split' };
+    case 'custom': {
+      const s = customSplit / 100;
+      return { sop: s, ovn: 1 - s, op: 0, label: s === 0 ? '100% Overnight' : s === 1 ? '100% Super Off-Peak' : `${customSplit}% Day / ${100 - customSplit}% Night` };
+    }
+    default: return { sop: 1, ovn: 0, op: 0, label: '100% Super Off-Peak' };
+  }
+}
+
+// ---- Compute costs ----
+function compute() {
+  const whPerKm = parseFloat(document.getElementById('consumption').value);
+  const kmPerYear = parseFloat(document.getElementById('distance').value);
+  const kwhPerYear = (whPerKm / 100) * kmPerYear;
+  const supplyDays = 365;
+
+  const split = getChargingSplit();
+
+  // A1 - flat rate always
+  const a1SupplyCost = RATES.a1.supply * supplyDays;
+  const a1EnergyCost = kwhPerYear * RATES.a1.flat;
+  const a1Total = a1SupplyCost + a1EnergyCost;
+
+  // Midday Saver — blended rate from split: sop rate + offpeak for remainder
+  const mdBlendedRate = split.sop * 0.086151 + (1 - split.sop) * 0.236916;
+  const mdCost = RATES.midday.supply * supplyDays + kwhPerYear * mdBlendedRate;
+
+  // EV Add-On — blended rate: sop, ovn, offpeak
+  const evBlendedRate = split.sop * 0.086151 + split.ovn * 0.193841 + split.op * 0.236916;
+  const evCost = RATES.ev.supply * supplyDays + kwhPerYear * evBlendedRate;
+
+  // Static scenario costs (for the full chart — all windows, not blended)
+  const mdSopCost = RATES.midday.supply * supplyDays + kwhPerYear * 0.086151;
+  const mdOpCost  = RATES.midday.supply * supplyDays + kwhPerYear * 0.236916;
+  const evSopCost   = RATES.ev.supply * supplyDays + kwhPerYear * 0.086151;
+  const evOvernightCost = RATES.ev.supply * supplyDays + kwhPerYear * 0.193841;
+  const evOpCost    = RATES.ev.supply * supplyDays + kwhPerYear * 0.236916;
+
+  return {
+    whPerKm, kmPerYear, kwhPerYear: Math.round(kwhPerYear),
+    split,
+    a1: { total: a1Total, supply: a1SupplyCost, energy: a1EnergyCost },
+    mdBlendedRate, evBlendedRate,
+    plansBlended: [
+      { name: 'Home Plan (A1)', cost: a1Total, plan: 'a1', supply: a1SupplyCost, rate: RATES.a1.flat },
+      { name: 'Midday Saver',   cost: mdCost,  plan: 'midday', supply: RATES.midday.supply * supplyDays, rate: mdBlendedRate },
+      { name: 'EV Add-On',      cost: evCost,  plan: 'ev', supply: RATES.ev.supply * supplyDays, rate: evBlendedRate },
+    ],
+    scenarios: {
+      a1_flat:        { label: 'A1 · Flat (all hrs)',       cost: a1Total, plan: 'a1' },
+      md_superoffpeak:{ label: 'Midday · Super Off-Peak',    cost: mdSopCost, plan: 'midday' },
+      md_offpeak:     { label: 'Midday · Off-Peak (9pm–9am)',cost: mdOpCost, plan: 'midday' },
+      ev_superoffpeak:{ label: 'EV Add-On · Super Off-Peak', cost: evSopCost, plan: 'ev' },
+      ev_overnight:   { label: 'EV Add-On · Overnight',      cost: evOvernightCost, plan: 'ev' },
+      ev_offpeak:     { label: 'EV Add-On · Off-Peak',       cost: evOpCost, plan: 'ev' },
+    },
+  };
+}
+
+// ---- Render ----
+function render() {
+  const d = compute();
+
+  // Update labels
+  document.getElementById('consumptionVal').textContent = d.whPerKm + ' kWh/100km';
+  document.getElementById('distanceVal').textContent = d.kmPerYear.toLocaleString() + ' km';
+  document.getElementById('blendedRate').innerHTML = d.split.sop === 0 && d.split.ovn === 1
+    ? 'Blended rate: <span>' + fmtCents(d.evBlendedRate) + '</span> (Overnight) &mdash; Midday Saver charges <span>' + fmtCents(d.mdBlendedRate) + '</span> (Off-Peak) instead'
+    : d.split.ovn === 0 && d.split.sop === 1
+    ? 'Blended rate: <span>' + fmtCents(d.evBlendedRate) + '</span> (Super Off-Peak) &mdash; same for Midday Saver'
+    : 'Blended rate: <span>' + fmtCents(d.evBlendedRate) + '</span> for EV Add-On &middot; <span>' + fmtCents(d.mdBlendedRate) + '</span> for Midday Saver';
+
+  // ---- Summary Cards ----
+  const bestPlan = d.plansBlended.reduce((a, b) => a.cost < b.cost ? a : b);
+  const a1Cost = d.plansBlended.find(p => p.plan === 'a1').cost;
+  const cards = d.plansBlended.map(p => {
+    const saving = a1Cost - p.cost;
+    return `
+      <div class="card${p.plan === bestPlan.plan ? ' best' : ''}">
+        <div class="plan-name">${p.name}</div>
+        <div class="annual-cost">${fmtDollars(p.cost)}<span style="font-size:0.7em;font-weight:500;color:var(--muted)">/yr</span></div>
+        <div class="annual-cost per-km">${(p.cost / d.kmPerYear * 100).toFixed(1)}c/km · ${fmtDollarsPrecise(p.cost / 12)}/mo</div>
+        <div class="saving${saving >= 0 ? ' positive' : ' negative'}">
+          ${saving >= 0 ? '↓ ' + fmtDollars(saving) + '/yr vs A1' : '↑ ' + fmtDollars(Math.abs(saving)) + '/yr vs A1'}
+        </div>
+      </div>`;
+  }).join('');
+  document.getElementById('summaryCards').innerHTML = cards;
+
+  // ---- Chart ----
+  const sc = d.scenarios;
+  const scenarioList = [
+    sc.a1_flat,
+    sc.md_superoffpeak,
+    sc.md_offpeak,
+    sc.ev_superoffpeak,
+    sc.ev_overnight,
+    sc.ev_offpeak,
+  ];
+  const scenarioLabels = scenarioList.map(s => s.label.replace(' · ', '\n'));
+  const scenarioCosts = scenarioList.map(s => Math.round(s.cost));
+  const colors = ['#8b949e', '#d2991d', '#d2991d88', '#3fb950', '#3fb950aa', '#3fb95088'];
+  const borders = ['#8b949e', '#d2991d', '#d2991d44', '#3fb950', '#3fb95066', '#3fb95044'];
+
+  if (chart) chart.destroy();
+  const ctx = document.getElementById('costChart').getContext('2d');
+  chart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: scenarioLabels,
+      datasets: [{
+        label: 'Annual cost (AUD)',
+        data: scenarioCosts,
+        backgroundColor: colors,
+        borderColor: borders,
+        borderWidth: 1,
+        borderRadius: 6,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => ' ' + fmtDollars(ctx.raw) + '/yr  (' + (ctx.raw / d.kmPerYear * 100).toFixed(1) + 'c/km)'
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: {
+            color: '#8b949e',
+            font: { size: 11 },
+            callback: (val, i) => scenarioList[i].label.replace(/ · /, '\n'),
+          },
+          grid: { display: false }
+        },
+        y: {
+          ticks: {
+            color: '#8b949e',
+            callback: v => '$' + v,
+          },
+          grid: { color: '#21262d' },
+          beginAtZero: true,
+        }
+      }
+    }
+  });
+
+  // ---- Plan Details ----
+  const planPanels = [RATES.a1, RATES.midday, RATES.ev].map(r => {
+    const rows = r.periods.map(p =>
+      `<tr><td>${p.label}</td><td>${fmtCents(p.rate)}</td></tr>`
+    ).join('');
+    return `
+      <div class="plan-panel">
+        <h3>${r.name}</h3>
+        <p style="font-size:0.82rem;color:var(--muted);margin-bottom:0.75rem;">${r.desc}</p>
+        <table class="rate-table">
+          ${rows}
+          <tr><td style="font-weight:600;">Supply charge</td><td>${({a1:'116.05',midday:'129.23',ev:'129.23'}[Object.keys(RATES).find(k=>RATES[k]===r)])}c/day</td></tr>
+        </table>
+        <a class="link" href="${r.url}" target="_blank" rel="noopener">→ Synergy website</a>
+        ${r === RATES.ev ? '<p class="note">Requires smart meter + EV registered at address</p>' : ''}
+        ${r === RATES.midday ? '<p class="note">Smart meter required</p>' : ''}
+      </div>`;
+  }).join('');
+  document.getElementById('planDetails').innerHTML = '<h2>Plan Details</h2><div class="plan-grid">' + planPanels + '</div>';
+
+  // ---- Analysis ----
+  const evPlan = d.plansBlended.find(p => p.plan === 'ev');
+  const mdPlan = d.plansBlended.find(p => p.plan === 'midday');
+  const savingVsA1 = a1Cost - evPlan.cost;
+
+  // Peak penalty calculation
+  const peakPenaltyPerKwh = 0.538446 - 0.323719;
+  const annualFromSupplyDiff = (1.2923 - 1.1605) * 365;
+
+  // Break-even in km for the user's actual blended rate
+  const breakevenKwh = annualFromSupplyDiff / (RATES.a1.flat - d.evBlendedRate);
+  const breakevenKm = breakevenKwh / (d.whPerKm / 100);
+
+  document.getElementById('analysis').innerHTML = `
+    <h2>Analysis</h2>
+    <div class="analysis-block">
+
+      <h3>Your EV Profile</h3>
+      <p>Annual charging: <strong>${d.kwhPerYear.toLocaleString()} kWh</strong> (${d.whPerKm} kWh/100km × ${d.kmPerYear.toLocaleString()} km)</p>
+      <p>Charging pattern: <strong>${d.split.label}</strong> → blended EV Add-On rate <strong>${fmtCents(d.evBlendedRate)}</strong></p>
+
+      <h3>Your Costs by Plan (${d.split.label})</h3>
+      <table class="analysis-table">
+        <tr><th>Plan</th><th>Blended Rate</th><th>Supply/yr</th><th>Energy/yr</th><th>Total/yr</th><th>vs A1</th></tr>
+        ${d.plansBlended.map(p => `
+          <tr>
+            <td><strong>${p.name}</strong></td>
+            <td>${fmtCents(p.rate)}</td>
+            <td>${fmtDollars(p.supply)}</td>
+            <td>${fmtDollars(d.kwhPerYear * p.rate)}</td>
+            <td><strong>${fmtDollars(p.cost)}</strong></td>
+            <td class="${p.plan === 'a1' ? '' : (a1Cost > p.cost ? 'highlight' : 'warn')}">${p.plan === 'a1' ? '—' : (a1Cost > p.cost ? '↓ ' + fmtDollars(a1Cost - p.cost) : '↑ ' + fmtDollars(p.cost - a1Cost))}</td>
+          </tr>`).join('')}
+      </table>
+
+      <h3>Full Window Comparison</h3>
+      <table class="analysis-table">
+        <tr><th>Charging Window</th><th>A1 Cost/yr</th><th>EV Add-On Cost/yr</th><th>Saving/yr</th></tr>
+        <tr>
+          <td>Super Off-Peak (9am–3pm)</td>
+          <td>${fmtDollars(a1Cost)}</td>
+          <td>${fmtDollars(d.scenarios.ev_superoffpeak.cost)}</td>
+          <td class="highlight">↓ ${fmtDollars(a1Cost - d.scenarios.ev_superoffpeak.cost)}</td>
+        </tr>
+        <tr>
+          <td>Overnight (11pm–6am)</td>
+          <td>${fmtDollars(a1Cost)}</td>
+          <td>${fmtDollars(d.scenarios.ev_overnight.cost)}</td>
+          <td class="highlight">↓ ${fmtDollars(a1Cost - d.scenarios.ev_overnight.cost)}</td>
+        </tr>
+        <tr>
+          <td>Off-Peak (6–9am / 9–11pm)</td>
+          <td>${fmtDollars(a1Cost)}</td>
+          <td>${fmtDollars(d.scenarios.ev_offpeak.cost)}</td>
+          <td class="highlight">↓ ${fmtDollars(a1Cost - d.scenarios.ev_offpeak.cost)}</td>
+        </tr>
+      </table>
+
+      <h3>Is the EV Add-On Worth It?</h3>
+      <p>The EV Add-On has a higher daily supply charge (<strong>129.23c/day</strong> vs A1's 116.05c/day — an extra <strong>${fmtDollarsPrecise(annualFromSupplyDiff)}/year</strong>), but this is recouped quickly by the lower charging rates.</p>
+      <ul>
+        <li>With your <strong>${d.split.label}</strong> pattern (blended rate <strong>${fmtCents(d.evBlendedRate)}</strong>), break-even is just <strong>${Math.round(breakevenKwh)} kWh/year</strong> — about <strong>${Math.round(breakevenKm).toLocaleString()} km</strong> at ${d.whPerKm} kWh/100km.</li>
+        <li>At ${d.kmPerYear.toLocaleString()} km/year, the EV Add-On <strong>${savingVsA1 > 0 ? 'saves ' + fmtDollars(savingVsA1) + '/year' : 'costs ' + fmtDollars(Math.abs(savingVsA1)) + '/year more'}</strong> versus A1 <em>on EV charging alone</em>.</li>
+      </ul>
+      ${d.split.sop < 1 ? `<p style="margin-top:0.75rem;"><strong>💡 Tip:</strong> Shifting even some charging to Super Off-Peak (9am–3pm) would save an additional <strong>${(d.evBlendedRate * 100 - 8.6151).toFixed(1)}c/kWh</strong> — worth <strong>${fmtDollars(d.kwhPerYear * (d.evBlendedRate - 0.086151))}/year</strong> at your mileage.</p>` : ''}
+
+      <div class="optimum-box">
+        <h4>⚡ Optimum Charging Strategy</h4>
+        <p><strong>1st choice:</strong> Charge during <strong>Super Off-Peak (9am–3pm)</strong> at <strong>8.62c/kWh</strong> — the cheapest electricity in Perth. If you have solar, this also aligns with peak generation.<br>
+        <strong>2nd choice:</strong> Set a charge timer for <strong>Overnight (11pm–6am)</strong> at <strong>19.38c/kWh</strong> — still ~40% cheaper than A1 flat rate.<br>
+        <strong>Avoid:</strong> Charging during Peak (3pm–9pm) at 53.84c/kWh — 66% more expensive than A1 flat rate.</p>
+      </div>
+
+      <h3>⚠ Peak Period Risk</h3>
+      <p>The EV Add-On's peak rate (3pm–9pm) is <strong>53.84c/kWh</strong> vs A1's flat 32.37c/kWh — a <strong class="warn">21.47c/kWh penalty</strong> on every non-EV kilowatt-hour used during those 6 hours. Heavy evening usage (cooking, air conditioning, heating) can partially offset EV savings.</p>
+      <table class="analysis-table">
+        <tr><th>Daily peak usage (3–9pm)</th><th>Extra cost/yr vs A1</th></tr>
+        <tr><td>3 kWh/day (light)</td><td class="warn">${fmtDollars(3 * peakPenaltyPerKwh * 365)}</td></tr>
+        <tr><td>5 kWh/day (moderate)</td><td class="warn">${fmtDollars(5 * peakPenaltyPerKwh * 365)}</td></tr>
+        <tr><td>8 kWh/day (heavy)</td><td class="warn">${fmtDollars(8 * peakPenaltyPerKwh * 365)}</td></tr>
+      </table>
+      <p>If you have a <strong>home battery</strong>, you can charge it during Super Off-Peak and discharge through the peak window, turning this penalty into a net gain. Combined with solar, total annual savings can reach <strong>~$860/year</strong> over A1.</p>
+    </div>
+  `;
+}
+
+document.getElementById('consumption').addEventListener('input', render);
+document.getElementById('distance').addEventListener('input', render);
+
+document.querySelectorAll('.pattern-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.pattern-btn').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    activePattern = this.dataset.pattern;
+    const customDiv = document.getElementById('customSplit');
+    if (activePattern === 'custom') {
+      customDiv.classList.add('visible');
+      document.getElementById('splitVal').textContent = customSplit + '% / ' + (100 - customSplit) + '%';
+    } else {
+      customDiv.classList.remove('visible');
+    }
+    render();
+  });
+});
+
+document.getElementById('splitSlider').addEventListener('input', function() {
+  customSplit = parseInt(this.value);
+  document.getElementById('splitVal').textContent = customSplit + '% / ' + (100 - customSplit) + '%';
+  render();
+});
+
+window.addEventListener('load', () => {
+  render();
+  setTimeout(() => { if (chart) { chart.resize(); chart.update(); } }, 100);
+});
+
+</script>
+</body>
+</html>
