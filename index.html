@@ -300,7 +300,6 @@
     <input type="time" id="customStart" value="23:00" style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:0.35rem 0.5rem;font-size:0.82rem;font-family:inherit;">
     <span style="font-size:0.82rem;white-space:nowrap;">to</span>
     <input type="time" id="customEnd" value="06:00" style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:0.35rem 0.5rem;font-size:0.82rem;font-family:inherit;">
-    <span class="split-val" id="splitVal"></span>
   </div>
   <div class="blended-rate" id="blendedRate"></div>
 </div>
@@ -531,14 +530,6 @@ function render() {
     : activePattern === 'custom'
     ? 'Blended rate: <span>' + fmtCents(d.evBlendedRate) + '</span> &mdash; ' + (d.split.sopMins ? Math.round(d.split.sop/d.split.totalMins*100) + '% Super Off-Peak, ' : '') + (d.split.ovnMins ? Math.round(d.split.ovn/d.split.totalMins*100) + '% Overnight, ' : '') + (d.split.opMins ? Math.round(d.split.op/d.split.totalMins*100) + '% Off-Peak, ' : '') + (d.split.peakMins ? Math.round(d.split.peak/d.split.totalMins*100) + '% Peak' : '')
     : 'Blended rate: <span>' + fmtCents(d.evBlendedRate) + '</span> for EV Add-On &middot; <span>' + fmtCents(d.mdBlendedRate) + '</span> for Midday Saver';
-
-  // Custom time breakdown
-  if (activePattern === 'custom' && d.split.totalMins) {
-    document.getElementById('splitVal').textContent = 
-      'SOP ' + Math.round(d.split.sop/d.split.totalMins*100) + '% · Ovn ' + Math.round(d.split.ovn/d.split.totalMins*100) + '% · OP ' + Math.round(d.split.op/d.split.totalMins*100) + '% · Peak ' + Math.round(d.split.peak/d.split.totalMins*100) + '%';
-  } else {
-    document.getElementById('splitVal').textContent = '';
-  }
 
   // ---- Summary Cards ----
   const bestPlan = d.plansBlended.reduce((a, b) => a.cost < b.cost ? a : b);
