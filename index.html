@@ -19,6 +19,33 @@
     --purple: #a371f7;
   }
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  /* -- Energy gradient bar -- */
+  .energy-bar {
+    height: 3px;
+    background: linear-gradient(90deg, #3fb950, #58a6ff, #a371f7, #3fb950);
+    background-size: 300% 100%;
+    animation: energyFlow 6s linear infinite;
+    border: none;
+    margin: 0 0 2rem 0;
+  }
+  @keyframes energyFlow {
+    0%   { background-position: 0% 0; }
+    100% { background-position: 300% 0; }
+  }
+
+  /* -- BEST badge pulse -- */
+  .card.best::after {
+    content: 'BEST'; position: absolute; top: -1px; right: 12px;
+    background: var(--green); color: #000; font-size: 0.65rem; font-weight: 800;
+    padding: 0.15rem 0.6rem; border-radius: 0 0 4px 4px; letter-spacing: 0.05em;
+    animation: badgePulse 3s ease-in-out infinite;
+  }
+  @keyframes badgePulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(63, 185, 80, 0); }
+    50%      { box-shadow: 0 0 12px 2px rgba(63, 185, 80, 0.4); }
+  }
+
   body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
     background: var(--bg);
@@ -30,9 +57,8 @@
 
   header {
     text-align: center;
-    margin-bottom: 2.5rem;
-    padding-bottom: 2rem;
-    border-bottom: 1px solid var(--border);
+    margin-bottom: 1.5rem;
+    padding-bottom: 0;
   }
   header h1 { font-size: 2rem; font-weight: 700; margin-bottom: 0.5rem; letter-spacing: -0.02em; }
   header h1 span { color: var(--accent); }
@@ -97,11 +123,6 @@
   .card .annual-cost { font-size: 1.8rem; font-weight: 800; margin-bottom: 0.25rem; }
   .card .annual-cost.per-km { font-size: 0.85rem; color: var(--muted); font-weight: 500; }
   .card.best { border-color: var(--green); position: relative; }
-  .card.best::after {
-    content: 'BEST'; position: absolute; top: -1px; right: 12px;
-    background: var(--green); color: #000; font-size: 0.65rem; font-weight: 800;
-    padding: 0.15rem 0.6rem; border-radius: 0 0 4px 4px; letter-spacing: 0.05em;
-  }
   .card .saving { font-size: 0.85rem; margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid var(--border); }
   .card .saving.positive { color: var(--green); }
   .card .saving.negative { color: var(--red); }
@@ -269,10 +290,11 @@
   <p class="last-updated">Rates effective 1 July 2025 · Analysis updated June 2026</p>
 </header>
 
+<div class="energy-bar"></div>
+
 <!-- Plan Details -->
 <div class="plan-details" id="planDetails"></div>
 
-<hr>
 <h2 style="font-size:1.2rem;font-weight:700;margin-bottom:1rem;">Calculator</h2>
 
 <div class="period-selector">
