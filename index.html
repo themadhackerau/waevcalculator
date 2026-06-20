@@ -282,7 +282,7 @@
   <div class="slider-group">
     <label><span id="distanceLabel">Annual Distance</span> <span class="val" id="distanceVal">15,000 km</span></label>
     <input type="range" id="distance" min="2000" max="40000" step="500" value="15000">
-    <div class="slider-ticks"><span>2k</span><span>10k</span><span>20k</span><span>30k</span><span>40k</span></div>
+    <div class="slider-ticks" id="distanceTicks"><span>2k</span><span>10k</span><span>20k</span><span>30k</span><span>40k</span></div>
   </div>
 </div>
 
@@ -364,7 +364,8 @@ const RATES = {
 let chart = null;
 let activePattern = 'sop100';
 let customSplit = 50;
-let activePeriod = 'year'; // 'day' | 'week' | 'month' | 'year'
+let activePeriod = 'year';
+let annualKm = 15000; // internal tracking, always in km/year
 
 function getPeriodInfo() {
   switch (activePeriod) {
@@ -382,6 +383,27 @@ function fmtPeriodDollars(annualAmount) {
 function fmtPeriodDollarsPrecise(annualAmount) {
   const pi = getPeriodInfo();
   return fmtDollarsPrecise(annualAmount / pi.divisor);
+}
+
+function updateDistanceSlider() {
+  const slider = document.getElementById('distance');
+  const ticks = document.getElementById('distanceTicks');
+  const pi = getPeriodInfo();
+  const d = pi.distDivisor;
+  const displayVal = Math.round(annualKm / d);
+  if (d === 365) {
+    slider.min = 5; slider.max = 150; slider.step = 5; slider.value = displayVal;
+    ticks.innerHTML = '<span>5</span><span>20</span><span>50</span><span>100</span><span>150</span>';
+  } else if (d === 52) {
+    slider.min = 35; slider.max = 1000; slider.step = 10; slider.value = displayVal;
+    ticks.innerHTML = '<span>50</span><span>200</span><span>400</span><span>750</span><span>1,000</span>';
+  } else if (d === 12) {
+    slider.min = 150; slider.max = 4000; slider.step = 50; slider.value = displayVal;
+    ticks.innerHTML = '<span>200</span><span>800</span><span>1,500</span><span>2,500</span><span>4,000</span>';
+  } else {
+    slider.min = 2000; slider.max = 40000; slider.step = 500; slider.value = displayVal;
+    ticks.innerHTML = '<span>2k</span><span>10k</span><span>20k</span><span>30k</span><span>40k</span>';
+  }
 }
 
 function fmtCents(c) {
@@ -411,7 +433,7 @@ function getChargingSplit() {
 // ---- Compute costs ----
 function compute() {
   const whPerKm = parseFloat(document.getElementById('consumption').value);
-  const kmPerYear = parseFloat(document.getElementById('distance').value);
+  const kmPerYear = annualKm;
   const kwhPerYear = (whPerKm / 100) * kmPerYear;
   const supplyDays = 365;
 
@@ -465,6 +487,7 @@ function render() {
   // Update labels
   document.getElementById('consumptionVal').textContent = d.whPerKm + ' kWh/100km';
   const pi = getPeriodInfo();
+  updateDistanceSlider();
   document.getElementById('distanceVal').textContent = (d.kmPerYear / pi.distDivisor).toLocaleString('en-AU', {maximumFractionDigits: 0}) + ' km';
   document.getElementById('distanceLabel').textContent = pi.distLabel;
   document.getElementById('blendedRate').innerHTML = d.split.sop === 0 && d.split.ovn === 1
@@ -664,7 +687,11 @@ function render() {
 }
 
 document.getElementById('consumption').addEventListener('input', render);
-document.getElementById('distance').addEventListener('input', render);
+document.getElementById('distance').addEventListener('input', function() {
+  const pi = getPeriodInfo();
+  annualKm = parseFloat(this.value) * pi.distDivisor;
+  render();
+});
 
 document.querySelectorAll('.pattern-btn').forEach(btn => {
   btn.addEventListener('click', function() {
