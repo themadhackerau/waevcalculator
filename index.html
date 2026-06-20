@@ -290,8 +290,8 @@
 <div class="charging-pattern">
   <label class="main">When do you charge your EV?</label>
   <div class="pattern-buttons" id="patternButtons">
-    <button class="pattern-btn active" data-pattern="sop100">☀️ All Super Off-Peak (9am–3pm)</button>
-    <button class="pattern-btn" data-pattern="ovn100">🌙 All Overnight (11pm–6am)</button>
+    <button class="pattern-btn active" data-pattern="ovn100">🌙 All Overnight (11pm–6am)</button>
+    <button class="pattern-btn" data-pattern="sop100">☀️ All Super Off-Peak (9am–3pm)</button>
     <button class="pattern-btn" data-pattern="split50">⚡ 50/50 Day + Night</button>
     <button class="pattern-btn" data-pattern="custom">🔧 Custom split</button>
   </div>
@@ -380,7 +380,7 @@ const RATES = {
 
 // ---- State ----
 let chart = null;
-let activePattern = 'sop100';
+let activePattern = 'ovn100';
 let customSplit = 50;
 let activePeriod = 'year';
 let annualKm = 15000; // internal tracking, always in km/year
