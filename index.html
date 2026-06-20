@@ -296,10 +296,11 @@
     <button class="pattern-btn" data-pattern="custom">🔧 Custom split</button>
   </div>
   <div class="custom-split" id="customSplit">
-    <span style="font-size:0.82rem;white-space:nowrap;">Super Off-Peak</span>
-    <input type="range" id="splitSlider" min="0" max="100" step="5" value="50">
-    <span style="font-size:0.82rem;white-space:nowrap;">Overnight</span>
-    <span class="split-val" id="splitVal">50% / 50%</span>
+    <span style="font-size:0.82rem;white-space:nowrap;">Charge from</span>
+    <input type="time" id="customStart" value="23:00" style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:0.35rem 0.5rem;font-size:0.82rem;font-family:inherit;">
+    <span style="font-size:0.82rem;white-space:nowrap;">to</span>
+    <input type="time" id="customEnd" value="06:00" style="background:var(--bg);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:0.35rem 0.5rem;font-size:0.82rem;font-family:inherit;">
+    <span class="split-val" id="splitVal"></span>
   </div>
   <div class="blended-rate" id="blendedRate"></div>
 </div>
@@ -381,7 +382,8 @@ const RATES = {
 // ---- State ----
 let chart = null;
 let activePattern = 'ovn100';
-let customSplit = 50;
+let customStartHour = 23, customStartMin = 0;
+let customEndHour = 6, customEndMin = 0;
 let activePeriod = 'year';
 let annualKm = 15000; // internal tracking, always in km/year
 
@@ -441,8 +443,20 @@ function getChargingSplit() {
     case 'ovn100': return { sop: 0, ovn: 1, op: 0, label: '100% Overnight' };
     case 'split50': return { sop: 0.5, ovn: 0.5, op: 0, label: '50/50 Split' };
     case 'custom': {
-      const s = customSplit / 100;
-      return { sop: s, ovn: 1 - s, op: 0, label: s === 0 ? '100% Overnight' : s === 1 ? '100% Super Off-Peak' : `${customSplit}% Day / ${100 - customSplit}% Night` };
+      // Compute overlap of custom time window with each tariff period
+      const startMins = customStartHour * 60 + customStartMin;
+      const endMins = customEndHour * 60 + customEndMin;
+      const totalMins = (endMins <= startMins) ? (1440 - startMins + endMins) : (endMins - startMins);
+      let sop = 0, ovn = 0, op = 0, peak = 0;
+      for (let m = startMins, count = 0; count < totalMins; count++, m = (m + 1) % 1440) {
+        if (m >= 540 && m < 900) sop++;
+        else if (m >= 900 && m < 1260) peak++;
+        else if ((m >= 1260 && m < 1380) || (m >= 360 && m < 540)) op++;
+        else ovn++;
+      }
+      const t = totalMins || 1;
+      const label = `${customStartHour}:${String(customStartMin).padStart(2,'0')}–${customEndHour}:${String(customEndMin).padStart(2,'0')} (${totalMins < 60 ? totalMins + 'min' : Math.round(totalMins/60) + 'h'})`;
+      return { sop: sop/t, ovn: ovn/t, op: op/t, label, totalMins, sopMins: sop, ovnMins: ovn, opMins: op, peakMins: peak };
     }
     default: return { sop: 1, ovn: 0, op: 0, label: '100% Super Off-Peak' };
   }
@@ -512,7 +526,19 @@ function render() {
     ? 'Blended rate: <span>' + fmtCents(d.evBlendedRate) + '</span> (Overnight) &mdash; Midday Saver charges <span>' + fmtCents(d.mdBlendedRate) + '</span> (Off-Peak) instead'
     : d.split.ovn === 0 && d.split.sop === 1
     ? 'Blended rate: <span>' + fmtCents(d.evBlendedRate) + '</span> (Super Off-Peak) &mdash; same for Midday Saver'
+    : activePattern === 'split50'
+    ? 'Blended rate: <span>' + fmtCents(d.evBlendedRate) + '</span> for EV Add-On &middot; <span>' + fmtCents(d.mdBlendedRate) + '</span> for Midday Saver'
+    : activePattern === 'custom'
+    ? 'Blended rate: <span>' + fmtCents(d.evBlendedRate) + '</span> &mdash; ' + (d.split.sopMins ? Math.round(d.split.sop/d.split.totalMins*100) + '% Super Off-Peak, ' : '') + (d.split.ovnMins ? Math.round(d.split.ovn/d.split.totalMins*100) + '% Overnight, ' : '') + (d.split.opMins ? Math.round(d.split.op/d.split.totalMins*100) + '% Off-Peak, ' : '') + (d.split.peakMins ? Math.round(d.split.peak/d.split.totalMins*100) + '% Peak' : '')
     : 'Blended rate: <span>' + fmtCents(d.evBlendedRate) + '</span> for EV Add-On &middot; <span>' + fmtCents(d.mdBlendedRate) + '</span> for Midday Saver';
+
+  // Custom time breakdown
+  if (activePattern === 'custom' && d.split.totalMins) {
+    document.getElementById('splitVal').textContent = 
+      'SOP ' + Math.round(d.split.sop/d.split.totalMins*100) + '% · Ovn ' + Math.round(d.split.ovn/d.split.totalMins*100) + '% · OP ' + Math.round(d.split.op/d.split.totalMins*100) + '% · Peak ' + Math.round(d.split.peak/d.split.totalMins*100) + '%';
+  } else {
+    document.getElementById('splitVal').textContent = '';
+  }
 
   // ---- Summary Cards ----
   const bestPlan = d.plansBlended.reduce((a, b) => a.cost < b.cost ? a : b);
@@ -719,7 +745,6 @@ document.querySelectorAll('.pattern-btn').forEach(btn => {
     const customDiv = document.getElementById('customSplit');
     if (activePattern === 'custom') {
       customDiv.classList.add('visible');
-      document.getElementById('splitVal').textContent = customSplit + '% / ' + (100 - customSplit) + '%';
     } else {
       customDiv.classList.remove('visible');
     }
@@ -736,9 +761,14 @@ document.querySelectorAll('.period-btn').forEach(btn => {
   });
 });
 
-document.getElementById('splitSlider').addEventListener('input', function() {
-  customSplit = parseInt(this.value);
-  document.getElementById('splitVal').textContent = customSplit + '% / ' + (100 - customSplit) + '%';
+document.getElementById('customStart').addEventListener('input', function() {
+  const [h, m] = this.value.split(':').map(Number);
+  customStartHour = h; customStartMin = m;
+  render();
+});
+document.getElementById('customEnd').addEventListener('input', function() {
+  const [h, m] = this.value.split(':').map(Number);
+  customEndHour = h; customEndMin = m;
   render();
 });
 
