@@ -68,6 +68,16 @@
     display: flex; justify-content: space-between;
     font-size: 0.72rem; color: var(--muted); margin-top: 0.25rem;
   }
+  .ev-select select {
+    width: 100%; padding: 0.55rem 0.75rem;
+    background: var(--surface); color: var(--text);
+    border: 1px solid var(--border); border-radius: 8px;
+    font-size: 0.88rem; font-family: inherit; cursor: pointer;
+    appearance: none; padding-right: 2rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238b949e' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 0.75rem center;
+  }
+  .ev-select select:focus { outline: none; border-color: var(--accent); }
 
   /* Summary cards */
   .summary-cards {
@@ -277,7 +287,12 @@
 <div class="sliders">
   <div class="slider-group">
     <label>EV Consumption <span class="val" id="consumptionVal">18 kWh/100km</span></label>
-    <input type="range" id="consumption" min="10" max="30" step="0.5" value="18">
+    <div class="ev-select" style="margin-bottom:0.5rem;">
+      <select id="evModel">
+        <option value="">-- Select your EV model --</option>
+      </select>
+    </div>
+    <input type="range" id="consumption" min="10" max="30" step="0.1" value="18">
     <div class="slider-ticks"><span>10</span><span>15</span><span>20</span><span>25</span><span>30</span></div>
   </div>
   <div class="slider-group">
@@ -386,6 +401,69 @@ let customStartHour = 23, customStartMin = 0;
 let customEndHour = 6, customEndMin = 0;
 let activePeriod = 'year';
 let annualKm = 15000; // internal tracking, always in km/year
+
+const EV_DATABASE = [
+  { make: 'Tesla', model: 'Model 3 RWD', kwh100: 13.3 },
+  { make: 'Tesla', model: 'Model 3 LR AWD', kwh100: 14.2 },
+  { make: 'Tesla', model: 'Model 3 Performance', kwh100: 16.0 },
+  { make: 'Tesla', model: 'Model Y RWD', kwh100: 14.8 },
+  { make: 'Tesla', model: 'Model Y LR AWD', kwh100: 15.7 },
+  { make: 'Tesla', model: 'Model Y Performance', kwh100: 17.0 },
+  { make: 'BYD', model: 'Atto 3', kwh100: 16.6 },
+  { make: 'BYD', model: 'Seal RWD', kwh100: 15.0 },
+  { make: 'BYD', model: 'Seal AWD', kwh100: 17.0 },
+  { make: 'BYD', model: 'Dolphin', kwh100: 15.0 },
+  { make: 'BYD', model: 'Sealion 6', kwh100: 18.5 },
+  { make: 'MG', model: 'MG4 51 kWh', kwh100: 15.7 },
+  { make: 'MG', model: 'MG4 64 kWh', kwh100: 16.4 },
+  { make: 'MG', model: 'MG4 XPower', kwh100: 17.0 },
+  { make: 'MG', model: 'ZS EV', kwh100: 17.7 },
+  { make: 'Hyundai', model: 'IONIQ 5 Std Range', kwh100: 16.9 },
+  { make: 'Hyundai', model: 'IONIQ 5 LR RWD', kwh100: 17.5 },
+  { make: 'Hyundai', model: 'IONIQ 5 LR AWD', kwh100: 19.0 },
+  { make: 'Hyundai', model: 'IONIQ 6 RWD', kwh100: 14.3 },
+  { make: 'Kia', model: 'EV3', kwh100: 15.1 },
+  { make: 'Kia', model: 'EV5', kwh100: 17.6 },
+  { make: 'Kia', model: 'EV6 RWD', kwh100: 16.8 },
+  { make: 'Kia', model: 'EV6 AWD', kwh100: 18.0 },
+  { make: 'Kia', model: 'EV9 RWD', kwh100: 20.0 },
+  { make: 'Kia', model: 'EV9 AWD', kwh100: 24.0 },
+  { make: 'Polestar', model: '2 Std Range', kwh100: 16.5 },
+  { make: 'Polestar', model: '2 LR', kwh100: 17.5 },
+  { make: 'Volvo', model: 'EX30', kwh100: 16.0 },
+  { make: 'Volvo', model: 'XC40 Recharge', kwh100: 18.5 },
+  { make: 'Cupra', model: 'Born', kwh100: 15.9 },
+  { make: 'GWM', model: 'Ora', kwh100: 16.0 },
+  { make: 'Zeekr', model: 'X', kwh100: 16.4 },
+  { make: 'Zeekr', model: '001', kwh100: 17.3 },
+  { make: 'Zeekr', model: '7X RWD', kwh100: 17.7 },
+  { make: 'Zeekr', model: '7X AWD', kwh100: 19.9 },
+  { make: 'BMW', model: 'i4 eDrive35', kwh100: 16.0 },
+  { make: 'BMW', model: 'iX1', kwh100: 16.5 },
+  { make: 'BMW', model: 'iX3', kwh100: 19.0 },
+  { make: 'Mercedes', model: 'EQA', kwh100: 17.0 },
+  { make: 'Mercedes', model: 'EQB', kwh100: 18.5 },
+  { make: 'Audi', model: 'Q4 e-tron', kwh100: 17.2 },
+  { make: 'Toyota', model: 'bZ4X', kwh100: 16.5 },
+  { make: 'Subaru', model: 'Solterra', kwh100: 16.7 },
+  { make: 'Nissan', model: 'Leaf', kwh100: 17.0 },
+  { make: 'Renault', model: 'Megane E-Tech', kwh100: 16.0 },
+  { make: 'Mini', model: 'Cooper E', kwh100: 14.6 },
+  { make: 'Fiat', model: '500e', kwh100: 14.8 },
+];
+
+// Sort by make then model
+EV_DATABASE.sort((a, b) => a.make.localeCompare(b.make) || a.model.localeCompare(b.model));
+
+function initEVSelector() {
+  const sel = document.getElementById('evModel');
+  EV_DATABASE.forEach(ev => {
+    const opt = document.createElement('option');
+    opt.value = ev.kwh100;
+    opt.textContent = `${ev.make} ${ev.model} (${ev.kwh100} kWh/100km)`;
+    sel.appendChild(opt);
+  });
+}
 
 function getPeriodInfo() {
   switch (activePeriod) {
@@ -517,7 +595,7 @@ function render() {
   const d = compute();
 
   // Update labels
-  document.getElementById('consumptionVal').textContent = d.whPerKm + ' kWh/100km';
+  document.getElementById('consumptionVal').textContent = parseFloat(d.whPerKm).toFixed(1) + ' kWh/100km';
   const pi = getPeriodInfo();
   updateDistanceSlider();
   document.getElementById('distanceVal').textContent = (d.kmPerYear / pi.distDivisor).toLocaleString('en-AU', {maximumFractionDigits: 0}) + ' km';
@@ -722,7 +800,17 @@ function render() {
   `;
 }
 
-document.getElementById('consumption').addEventListener('input', render);
+document.getElementById('consumption').addEventListener('input', function() {
+  document.getElementById('evModel').value = '';
+  document.getElementById('consumptionVal').textContent = parseFloat(this.value).toFixed(1) + ' kWh/100km';
+  render();
+});
+document.getElementById('evModel').addEventListener('change', function() {
+  if (this.value) {
+    document.getElementById('consumption').value = this.value;
+  }
+  render();
+});
 document.getElementById('distance').addEventListener('input', function() {
   const pi = getPeriodInfo();
   annualKm = parseFloat(this.value) * pi.distDivisor;
@@ -765,6 +853,7 @@ document.getElementById('customEnd').addEventListener('input', function() {
 });
 
 window.addEventListener('load', () => {
+  initEVSelector();
   render();
   setTimeout(() => { if (chart) { chart.resize(); chart.update(); } }, 100);
 });
