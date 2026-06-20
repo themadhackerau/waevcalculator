@@ -522,9 +522,9 @@ function render() {
   updateDistanceSlider();
   document.getElementById('distanceVal').textContent = (d.kmPerYear / pi.distDivisor).toLocaleString('en-AU', {maximumFractionDigits: 0}) + ' km';
   document.getElementById('distanceLabel').textContent = pi.distLabel;
-  document.getElementById('blendedRate').innerHTML = d.split.sop === 0 && d.split.ovn === 1
+  document.getElementById('blendedRate').innerHTML = activePattern === 'ovn100'
     ? 'Blended rate: <span>' + fmtCents(d.evBlendedRate) + '</span> (Overnight) &mdash; Midday Saver charges <span>' + fmtCents(d.mdBlendedRate) + '</span> (Off-Peak) instead'
-    : d.split.ovn === 0 && d.split.sop === 1
+    : activePattern === 'sop100'
     ? 'Blended rate: <span>' + fmtCents(d.evBlendedRate) + '</span> (Super Off-Peak) &mdash; same for Midday Saver'
     : activePattern === 'split50'
     ? 'Blended rate: <span>' + fmtCents(d.evBlendedRate) + '</span> for EV Add-On &middot; <span>' + fmtCents(d.mdBlendedRate) + '</span> for Midday Saver'
