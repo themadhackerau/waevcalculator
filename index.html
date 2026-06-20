@@ -316,6 +316,24 @@
 <!-- Analysis -->
 <div class="analysis" id="analysis"></div>
 
+<!-- Assumptions -->
+<div class="analysis">
+  <h2>Assumptions</h2>
+  <div class="analysis-block">
+    <p style="margin-bottom:0.75rem;">This tool estimates EV charging costs by applying your blended electricity rate to annual kilowatt-hour consumption. It does <strong>not</strong> simulate individual charging sessions.</p>
+    <ul>
+      <li><strong>All charging is at home</strong> — no public or fast-charger usage is factored in. If you do a portion of your driving on road trips, reduce the annual distance proportionally.</li>
+      <li><strong>All charging lands in your chosen windows</strong> — if you select "All Overnight", the model assumes 100% of your annual kWh draw happens between 11pm–6am with no spillover.</li>
+      <li><strong>Linear consumption</strong> — annual kWh is simply kWh/100km × annual km. Whether that's 10 kWh every night or 60 kWh twice a week makes no difference to the total.</li>
+      <li><strong>No charging losses</strong> — a real 7 kW wall charger is ~90–95% efficient, so actual grid draw would be 5–10% higher than what reaches the battery. This applies equally to all plans, so relative comparisons hold.</li>
+      <li><strong>No battery degradation</strong> — consumption per km is treated as constant over the year.</li>
+      <li><strong>Battery capacity is irrelevant</strong> — whether your EV has a 40 kWh or 80 kWh pack, only total annual kWh consumed matters for cost.</li>
+      <li><strong>Rates are effective 1 July 2025</strong> — Synergy typically adjusts tariffs annually. Future rate changes are not modelled.</li>
+    </ul>
+    <p style="margin-top:0.75rem;font-size:0.82rem;color:var(--muted);">These assumptions apply equally across all three plans, so the <em>relative</em> savings remain accurate regardless of individual charging patterns.</p>
+  </div>
+</div>
+
 <footer>
   Rates sourced from Synergy &amp; WA Government. Not financial advice — verify with <a href="https://www.synergy.net.au/Your-home/Energy-plans" style="color:var(--accent)">synergy.net.au</a> before switching.
 </footer>
